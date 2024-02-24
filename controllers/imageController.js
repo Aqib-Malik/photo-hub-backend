@@ -27,6 +27,8 @@ con.connect(function(err,){
 exports.createImage = (req, res) => {
     // Extract necessary data from the request body
     const { image, title, description, rating, userId,category_id } = req.body;
+    console.log(req.body)
+    console.log(category_id)
 
     // Create the SQL query to insert the image record into the database
     const sql = 'INSERT INTO photos (image, title, description, rating, user_id, category_id) VALUES (?, ?, ?, ?, ?, ?)';
@@ -65,7 +67,6 @@ exports.getImages = (req, res) => {
 
 
 exports.addRating = (req, res) => {
-    // Extract necessary data from the request body
     const { imageId, rating } = req.body;
 
     // Fetch existing ratings for the image from the database

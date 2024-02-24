@@ -1,11 +1,8 @@
-// controllers/authController.js
 const bcrypt = require('bcrypt');
 const crypto = require('crypto'); 
 const nodemailer = require('nodemailer');
-const jwt = require('jsonwebtoken');
-;
+const jwt = require('jsonwebtoken');;
 
-// Import the MySQL connection
 const mySql = require('mysql');
 
 const secretKey = crypto.randomBytes(32).toString('hex')
@@ -33,8 +30,6 @@ exports.signup = (req, res) => {
             console.error('Error hashing password:', err);
             return res.status(500).json({ error: 'Internal server error' });
         }
-
-        // Insert user data into the database with verification token
         const sql = 'INSERT INTO users (username, email, password, verification_token) VALUES (?, ?, ?, ?)';
         con.query(sql, [username, email, hashedPassword, verificationToken], (err, result) => {
             if (err) {
@@ -80,8 +75,6 @@ function sendVerificationEmail(email, verificationToken) {
 
 exports.verifyEmail = (req, res) => {
     const verificationToken = req.params.token;
-
-    // Check if token exists in the database
     const sql = 'SELECT * FROM users WHERE verification_token = ?';
     con.query(sql, [verificationToken], (err, result) => {
         if (err) {
@@ -92,8 +85,6 @@ exports.verifyEmail = (req, res) => {
         if (result.length === 0) {
             return res.status(404).json({ error: 'Invalid or expired verification token' });
         }
-
-        // Mark the user as verified in the database
         const updateSql = 'UPDATE users SET verified = true, verification_token = null WHERE id = ?';
         con.query(updateSql, [result[0].id], (err, updateResult) => {
             if (err) {
@@ -112,7 +103,6 @@ exports.login = (req, res) => {
     console.log(req.body);
     const { email, password } = req.body;
 
-    // Query the database to find the user by email
     const sql = 'SELECT * FROM users WHERE email = ?';
     con.query(sql, [email], (err, results) => {
         if (err) {
@@ -120,14 +110,11 @@ exports.login = (req, res) => {
             return res.status(500).json({ error: 'Internal server error' });
         }
 
-        // Check if user with given email exists
         if (results.length === 0) {
             return res.status(404).json({ error: 'User not found' });
         }
 
         const user = results[0];
-
-        // Check if the provided password matches the hashed password in the database
         bcrypt.compare(password, user.password, (err, isValid) => {
             if (err) {
                 console.error('Error comparing passwords:', err);
@@ -139,7 +126,7 @@ exports.login = (req, res) => {
             }
 
             // Generate JWT token
-            const token = jwt.sign({ userId: user.id }, secretKey, { expiresIn: '1h' }); // Token expires in 1 hour
+            const token = jwt.sign({ userId: user.id }, secretKey, { expiresIn: '1h' }); 
 
             res.status(200).json({ token ,'userId': user.id});
         });
@@ -159,5 +146,29 @@ exports.updateIsPhotographer = (req, res) => {
 
         console.log('is_photographer status updated successfully');
         res.status(200).json({ message: 'is_photographer status updated successfully' });
+    });
+};
+
+// getAllusers
+exports.getAllUsers = (req, res) => {
+    const sql = `
+        SELECT users.*, 
+               COUNT(photos.id) AS total_photos_uploaded
+        FROM users
+        LEFT JOIN photos ON users.id = photos.user_id
+        GROUP BY users.id
+    `;
+    con.query(sql, (err, results) => {
+        if (err) {
+            console.error('Error executing query:', err);
+            return res.status(500).json({ error: 'Internal server error' });
+        }
+
+        const mappedResults = results.map(user => ({
+            ...user,
+            is_photographer: user.is_photographer === 1 ? true : false
+        }));
+
+        res.status(200).json(mappedResults);
     });
 };
